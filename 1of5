@@ -1,0 +1,810 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  StatusBar,
+  Switch,
+  Animated,
+} from 'react-native';
+import { UserProfile } from '../../../shared/types/user';
+import { UserProfile, Medication } from '../../../shared/types/user';
+
+// ─── Step definitions for the multi-step setup flow ──────────────────────
+const STEPS = [
+  { id: 'basics',      label: 'The Basics',    emoji: '👤' },
+  { id: 'health',      label: 'Your Health',   emoji: '🩺' },
+  { id: 'medications', label: 'Medications',   emoji: '💊' },
+  { id: 'wellness',    label: 'How You Feel',  emoji: '🧠' },
+  { id: 'reminders',   label: 'Reminders',     emoji: '🔔' },
+];
+
+type ReminderStyle = 'vibration' | 'low' | 'medium' | 'commanding';
+
+const ProfileScreen: React.FC = () => {
+  const [step, setStep] = useState(0);
+  const [profile, setProfile] = useState<Partial<UserProfile>>({
+    age: undefined,
+    weightKg: undefined,
+
+@@ -20,131 +35,705 @@ const ProfileScreen: React.FC = () => {
+    medications: [],
+    wellnessInput: { physicalScore: 5, mentalScore: 5 },
+  });
+  const [reminderStyle, setReminderStyle] = useState<ReminderStyle>('medium');
+  const [conditionText, setConditionText] = useState('');
+  const [medName, setMedName] = useState('');
+  const [medDose, setMedDose] = useState('');
+  const progressAnim = React.useRef(new Animated.Value(0)).current;
+
+  const isLastStep = step === STEPS.length - 1;
+
+  // Animate progress bar when step changes
+  React.useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: (step + 1) / STEPS.length,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [step]);
+
+  const goNext = () => {
+    if (!isLastStep) setStep(s => s + 1);
+    else handleSave();
+  };
+
+  const goBack = () => {
+    if (step > 0) setStep(s => s - 1);
+  };
+
+  const handleSave = () => {
+    // TODO: validate and save profile to backend
+    console.log('Saving profile:', profile);
+    // TODO: POST profile to backend /api/users
+    console.log('Profile saved:', profile, 'Reminder:', reminderStyle);
+  };
+
+  const addCondition = () => {
+    if (!conditionText.trim()) return;
+    setProfile(p => ({ ...p, conditions: [...(p.conditions || []), conditionText.trim()] }));
+    setConditionText('');
+  };
+
+  const removeCondition = (index: number) => {
+    setProfile(p => ({ ...p, conditions: p.conditions?.filter((_, i) => i !== index) }));
+  };
+
+  const addMedication = () => {
+    if (!medName.trim() || !medDose.trim()) return;
+    const med: Medication = { name: medName.trim(), dosageMg: parseFloat(medDose) };
+    setProfile(p => ({ ...p, medications: [...(p.medications || []), med] }));
+    setMedName('');
+    setMedDose('');
+  };
+
+  const removeMedication = (index: number) => {
+    setProfile(p => ({ ...p, medications: p.medications?.filter((_, i) => i !== index) }));
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Text style={styles.heading}>Your Profile</Text>
+        <Text style={styles.subheading}>
+          This information helps Sips calculate your exact hydration needs.
+      <StatusBar barStyle="light-content" backgroundColor="#060f1e" />
+
+      {/* ── Top progress bar ── */}
+      <View style={styles.progressTrack}>
+        <Animated.View
+          style={[
+            styles.progressFill,
+            {
+              width: progressAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0%', '100%'],
+              }),
+            },
+          ]}
+        />
+      </View>
+
+      {/* ── Step indicator ── */}
+      <View style={styles.stepIndicator}>
+        {STEPS.map((s, i) => (
+          <View
+            key={s.id}
+            style={[
+              styles.stepDot,
+              i === step && styles.stepDotActive,
+              i < step && styles.stepDotDone,
+            ]}
+          />
+        ))}
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── Step header ── */}
+        <View style={styles.stepHeader}>
+          <Text style={styles.stepEmoji}>{STEPS[step].emoji}</Text>
+          <Text style={styles.stepTitle}>{STEPS[step].label}</Text>
+          <Text style={styles.stepCount}>Step {step + 1} of {STEPS.length}</Text>
+        </View>
+
+        {/* ── Step content ── */}
+        {step === 0 && <StepBasics profile={profile} setProfile={setProfile} />}
+        {step === 1 && (
+          <StepHealth
+            profile={profile}
+            setProfile={setProfile}
+            conditionText={conditionText}
+            setConditionText={setConditionText}
+            addCondition={addCondition}
+            removeCondition={removeCondition}
+          />
+        )}
+        {step === 2 && (
+          <StepMedications
+            profile={profile}
+            medName={medName}
+            setMedName={setMedName}
+            medDose={medDose}
+            setMedDose={setMedDose}
+            addMedication={addMedication}
+            removeMedication={removeMedication}
+          />
+        )}
+        {step === 3 && <StepWellness profile={profile} setProfile={setProfile} />}
+        {step === 4 && (
+          <StepReminders
+            reminderStyle={reminderStyle}
+            setReminderStyle={setReminderStyle}
+          />
+        )}
+
+        {/* ── Navigation buttons ── */}
+        <View style={styles.navRow}>
+          {step > 0 && (
+            <TouchableOpacity style={styles.backButton} onPress={goBack}>
+              <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.nextButton, step === 0 && styles.nextButtonFull]}
+            onPress={goNext}
+          >
+            <Text style={styles.nextButtonText}>
+              {isLastStep ? '💧 Start Sipping!' : 'Next →'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+// ─── Step 1: Basic physical info ─────────────────────────────────────────
+const StepBasics: React.FC<{ profile: any; setProfile: any }> = ({ profile, setProfile }) => (
+  <View style={styles.stepContent}>
+    <Text style={styles.stepDescription}>
+      Sips uses your physical stats to calculate exactly how much water your body needs.
+    </Text>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Age</Text>
+    <Field label="Age" placeholder="e.g. 28">
+      <TextInput
+        style={styles.input}
+        keyboardType="numeric"
+            placeholder="e.g. 32"
+            placeholderTextColor="#556"
+            onChangeText={v => setProfile(p => ({ ...p, age: parseInt(v) }))}
+        placeholder="e.g. 28"
+        placeholderTextColor="#334455"
+        value={profile.age?.toString() || ''}
+        onChangeText={v => setProfile((p: any) => ({ ...p, age: parseInt(v) || undefined }))}
+      />
+        </View>
+    </Field>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Weight (kg)</Text>
+    <Field label="Weight" placeholder="">
+      <View style={styles.inputRow}>
+        <TextInput
+            style={styles.input}
+          style={[styles.input, { flex: 1 }]}
+          keyboardType="decimal-pad"
+          placeholder="e.g. 75"
+            placeholderTextColor="#556"
+            onChangeText={v => setProfile(p => ({ ...p, weightKg: parseFloat(v) }))}
+          placeholderTextColor="#334455"
+          value={profile.weightKg?.toString() || ''}
+          onChangeText={v => setProfile((p: any) => ({ ...p, weightKg: parseFloat(v) || undefined }))}
+        />
+        <View style={styles.unitBadge}><Text style={styles.unitText}>kg</Text></View>
+      </View>
+    </Field>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Height (cm)</Text>
+    <Field label="Height" placeholder="">
+      <View style={styles.inputRow}>
+        <TextInput
+            style={styles.input}
+          style={[styles.input, { flex: 1 }]}
+          keyboardType="decimal-pad"
+          placeholder="e.g. 175"
+            placeholderTextColor="#556"
+            onChangeText={v => setProfile(p => ({ ...p, heightCm: parseFloat(v) }))}
+          placeholderTextColor="#334455"
+          value={profile.heightCm?.toString() || ''}
+          onChangeText={v => setProfile((p: any) => ({ ...p, heightCm: parseFloat(v) || undefined }))}
+        />
+        <View style={styles.unitBadge}><Text style={styles.unitText}>cm</Text></View>
+      </View>
+    </Field>
+
+    <Field label="Biological Sex" placeholder="">
+      <View style={styles.segmentRow}>
+        {(['male', 'female', 'other'] as const).map(s => (
+          <TouchableOpacity
+            key={s}
+            style={[
+              styles.segment,
+              profile.sex === s && styles.segmentActive,
+            ]}
+            onPress={() => setProfile((p: any) => ({ ...p, sex: s }))}
+          >
+            <Text style={[
+              styles.segmentText,
+              profile.sex === s && styles.segmentTextActive,
+            ]}>
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </Field>
+  </View>
+);
+
+// ─── Step 2: Medical conditions ───────────────────────────────────────────
+const StepHealth: React.FC<any> = ({
+  profile, setProfile, conditionText, setConditionText, addCondition, removeCondition
+}) => (
+  <View style={styles.stepContent}>
+    <Text style={styles.stepDescription}>
+      Certain conditions like diabetes or kidney issues affect how much water you need.
+      Only add conditions you've been professionally diagnosed with.
+    </Text>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Medical Conditions</Text>
+    <Field label="Add a Condition" placeholder="">
+      <View style={styles.inputRow}>
+        <TextInput
+            style={[styles.input, styles.multiline]}
+            multiline
+            placeholder="e.g. diabetes, kidney stones (one per line)"
+            placeholderTextColor="#556"
+            onChangeText={v =>
+              setProfile(p => ({ ...p, conditions: v.split('\n').filter(Boolean) }))
+            }
+          style={[styles.input, { flex: 1 }]}
+          placeholder="e.g. Type 2 Diabetes"
+          placeholderTextColor="#334455"
+          value={conditionText}
+          onChangeText={setConditionText}
+          onSubmitEditing={addCondition}
+          returnKeyType="done"
+        />
+        <TouchableOpacity style={styles.addButton} onPress={addCondition}>
+          <Text style={styles.addButtonText}>+ Add</Text>
+        </TouchableOpacity>
+      </View>
+    </Field>
+
+    {(profile.conditions || []).length > 0 && (
+      <View style={styles.tagList}>
+        {profile.conditions.map((c: string, i: number) => (
+          <View key={i} style={styles.tag}>
+            <Text style={styles.tagText}>{c}</Text>
+            <TouchableOpacity onPress={() => removeCondition(i)}>
+              <Text style={styles.tagRemove}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
+    )}
+
+    <View style={styles.infoBox}>
+      <Text style={styles.infoText}>
+        🔒 Your health data is private and stored securely. It is never shared or sold.
+      </Text>
+    </View>
+  </View>
+);
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Physical Wellness (1-10)</Text>
+// ─── Step 3: Medications ──────────────────────────────────────────────────
+const StepMedications: React.FC<any> = ({
+  profile, medName, setMedName, medDose, setMedDose, addMedication, removeMedication
+}) => (
+  <View style={styles.stepContent}>
+    <Text style={styles.stepDescription}>
+      Some medications (like diuretics) change how much water your body needs.
+      Add any prescribed medications and their dosage.
+    </Text>
+
+    <Field label="Medication Name" placeholder="">
+      <TextInput
+        style={styles.input}
+            keyboardType="numeric"
+            placeholder="5"
+            placeholderTextColor="#556"
+            onChangeText={v =>
+              setProfile(p => ({
+        placeholder="e.g. Furosemide"
+        placeholderTextColor="#334455"
+        value={medName}
+        onChangeText={setMedName}
+      />
+    </Field>
+
+    <Field label="Dosage" placeholder="">
+      <View style={styles.inputRow}>
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          keyboardType="decimal-pad"
+          placeholder="e.g. 40"
+          placeholderTextColor="#334455"
+          value={medDose}
+          onChangeText={setMedDose}
+        />
+        <View style={styles.unitBadge}><Text style={styles.unitText}>mg</Text></View>
+        <TouchableOpacity style={styles.addButton} onPress={addMedication}>
+          <Text style={styles.addButtonText}>+ Add</Text>
+        </TouchableOpacity>
+      </View>
+    </Field>
+
+    {(profile.medications || []).length > 0 && (
+      <View style={styles.tagList}>
+        {profile.medications.map((m: Medication, i: number) => (
+          <View key={i} style={styles.tag}>
+            <Text style={styles.tagText}>{m.name} {m.dosageMg}mg</Text>
+            <TouchableOpacity onPress={() => removeMedication(i)}>
+              <Text style={styles.tagRemove}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
+    )}
+
+    <TouchableOpacity style={styles.skipLink}>
+      <Text style={styles.skipLinkText}>I don't take any medications →</Text>
+    </TouchableOpacity>
+  </View>
+);
+
+// ─── Step 4: Wellness sliders ─────────────────────────────────────────────
+const StepWellness: React.FC<{ profile: any; setProfile: any }> = ({ profile, setProfile }) => {
+  const physical = profile.wellnessInput?.physicalScore ?? 5;
+  const mental = profile.wellnessInput?.mentalScore ?? 5;
+
+  const scores = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+  const physicalLabel = physical <= 3 ? 'Not great 😔' : physical <= 6 ? 'Okay 😐' : 'Feeling good 😊';
+  const mentalLabel = mental <= 3 ? 'Struggling 😔' : mental <= 6 ? 'Alright 😐' : 'Great 😊';
+
+  return (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepDescription}>
+        How are you feeling today? This helps Sips understand your current state
+        and adjust your hydration plan accordingly.
+      </Text>
+
+      <Field label={`Physical Wellness — ${physicalLabel}`} placeholder="">
+        <View style={styles.scoreRow}>
+          {scores.map(s => (
+            <TouchableOpacity
+              key={s}
+              style={[
+                styles.scoreButton,
+                physical === s && styles.scoreButtonActive,
+              ]}
+              onPress={() =>
+                setProfile((p: any) => ({
+                  ...p,
+                wellnessInput: { ...p.wellnessInput!, physicalScore: parseInt(v) },
+                  wellnessInput: { ...p.wellnessInput, physicalScore: s },
+                }))
+              }
+          />
+            >
+              <Text style={[
+                styles.scoreText,
+                physical === s && styles.scoreTextActive,
+              ]}>{s}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Field>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Mental Wellness (1-10)</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="numeric"
+            placeholder="5"
+            placeholderTextColor="#556"
+            onChangeText={v =>
+              setProfile(p => ({
+      <Field label={`Mental Wellness — ${mentalLabel}`} placeholder="">
+        <View style={styles.scoreRow}>
+          {scores.map(s => (
+            <TouchableOpacity
+              key={s}
+              style={[
+                styles.scoreButton,
+                mental === s && styles.scoreButtonActive,
+              ]}
+              onPress={() =>
+                setProfile((p: any) => ({
+                  ...p,
+                wellnessInput: { ...p.wellnessInput!, mentalScore: parseInt(v) },
+                  wellnessInput: { ...p.wellnessInput, mentalScore: s },
+                }))
+              }
+          />
+            >
+              <Text style={[
+                styles.scoreText,
+                mental === s && styles.scoreTextActive,
+              ]}>{s}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Field>
+    </View>
+  );
+};
+
+// ─── Step 5: Reminder preferences ────────────────────────────────────────
+const REMINDER_OPTIONS: { style: ReminderStyle; label: string; desc: string; emoji: string }[] = [
+  { style: 'vibration', label: 'Vibration Only',   desc: 'Silent buzz on your phone and watch', emoji: '📳' },
+  { style: 'low',       label: 'Soft Sound',        desc: 'A gentle, quiet chime',               emoji: '🔉' },
+  { style: 'medium',    label: 'Medium Sound',      desc: 'Clear and noticeable',                emoji: '🔊' },
+  { style: 'commanding',label: 'Commanding Sound',  desc: 'Hard to ignore — gets the job done',  emoji: '📢' },
+];
+
+const StepReminders: React.FC<{
+  reminderStyle: ReminderStyle;
+  setReminderStyle: (s: ReminderStyle) => void;
+}> = ({ reminderStyle, setReminderStyle }) => (
+  <View style={styles.stepContent}>
+    <Text style={styles.stepDescription}>
+      How would you like Sips to remind you to drink? You can change this anytime.
+    </Text>
+
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>Save Profile</Text>
+    {REMINDER_OPTIONS.map(opt => (
+      <TouchableOpacity
+        key={opt.style}
+        style={[
+          styles.reminderOption,
+          reminderStyle === opt.style && styles.reminderOptionActive,
+        ]}
+        onPress={() => setReminderStyle(opt.style)}
+      >
+        <Text style={styles.reminderEmoji}>{opt.emoji}</Text>
+        <View style={styles.reminderText}>
+          <Text style={[
+            styles.reminderLabel,
+            reminderStyle === opt.style && styles.reminderLabelActive,
+          ]}>{opt.label}</Text>
+          <Text style={styles.reminderDesc}>{opt.desc}</Text>
+        </View>
+        <View style={[
+          styles.radioOuter,
+          reminderStyle === opt.style && styles.radioOuterActive,
+        ]}>
+          {reminderStyle === opt.style && <View style={styles.radioInner} />}
+        </View>
+      </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
+    ))}
+  </View>
+);
+};
+
+// ─── Reusable field wrapper ───────────────────────────────────────────────
+const Field: React.FC<{ label: string; placeholder: string; children: React.ReactNode }> = ({
+  label,
+  children,
+}) => (
+  <View style={styles.field}>
+    <Text style={styles.fieldLabel}>{label}</Text>
+    {children}
+  </View>
+);
+
+// ─── Styles ───────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0a1628' },
+  scroll: { padding: 20, gap: 16 },
+  heading: { fontSize: 28, fontWeight: '700', color: '#fff' },
+  subheading: { fontSize: 14, color: '#8899aa', lineHeight: 20 },
+  section: { gap: 6 },
+  label: { fontSize: 14, fontWeight: '600', color: '#aabbcc' },
+  container: { flex: 1, backgroundColor: '#060f1e' },
+  scroll: { padding: 24, paddingBottom: 48, gap: 0 },
+
+  // Progress bar
+  progressTrack: {
+    height: 3,
+    backgroundColor: '#0d1f35',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#2196f3',
+    shadowColor: '#2196f3',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+  },
+
+  // Step dots
+  stepIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+  },
+  stepDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#1a2f4a',
+  },
+  stepDotActive: {
+    backgroundColor: '#2196f3',
+    width: 24,
+  },
+  stepDotDone: {
+    backgroundColor: '#4caf50',
+  },
+
+  // Step header
+  stepHeader: {
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  stepEmoji: { fontSize: 48, marginBottom: 10 },
+  stepTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  stepCount: {
+    fontSize: 13,
+    color: '#445566',
+  },
+
+  stepContent: { gap: 20 },
+  stepDescription: {
+    fontSize: 15,
+    color: '#6677aa',
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+
+  // Fields
+  field: { gap: 8 },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#7788aa',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  input: {
+    backgroundColor: '#1a2a3a',
+    borderRadius: 10,
+    padding: 14,
+    color: '#fff',
+    backgroundColor: '#0d1f35',
+    borderRadius: 12,
+    padding: 16,
+    color: '#ffffff',
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#2a3a4a',
+    borderColor: '#1a2f4a',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  unitBadge: {
+    backgroundColor: '#1a2f4a',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+  },
+  unitText: { color: '#6677aa', fontWeight: '600' },
+
+  // Segment control (sex selector)
+  segmentRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#0d1f35',
+    borderWidth: 1,
+    borderColor: '#1a2f4a',
+  },
+  segmentActive: {
+    backgroundColor: '#2196f322',
+    borderColor: '#2196f3',
+  },
+  segmentText: { color: '#6677aa', fontWeight: '600' },
+  segmentTextActive: { color: '#2196f3' },
+
+  // Tags (conditions / medications)
+  tagList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2196f322',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#2196f344',
+  },
+  multiline: { minHeight: 80, textAlignVertical: 'top' },
+  saveButton: {
+  tagText: { color: '#aabbdd', fontSize: 13 },
+  tagRemove: { color: '#5577aa', fontSize: 13 },
+
+  // Add button
+  addButton: {
+    backgroundColor: '#2196f3',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  addButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+  // Info box
+  infoBox: {
+    backgroundColor: '#0d1f35',
+    borderRadius: 12,
+    padding: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: '#2196f3',
+  },
+  infoText: { color: '#6677aa', fontSize: 13, lineHeight: 20 },
+
+  // Skip link
+  skipLink: { alignItems: 'center', paddingVertical: 8 },
+  skipLinkText: { color: '#445566', fontSize: 14 },
+
+  // Score buttons (wellness)
+  scoreRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  scoreButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: '#0d1f35',
+    borderWidth: 1,
+    borderColor: '#1a2f4a',
+  },
+  scoreButtonActive: {
+    backgroundColor: '#2196f3',
+    borderColor: '#2196f3',
+  },
+  scoreText: { color: '#445566', fontWeight: '700', fontSize: 13 },
+  scoreTextActive: { color: '#fff' },
+
+  // Reminder options
+  reminderOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0d1f35',
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: '#1a2f4a',
+  },
+  reminderOptionActive: {
+    borderColor: '#2196f3',
+    backgroundColor: '#2196f311',
+  },
+  reminderEmoji: { fontSize: 28 },
+  reminderText: { flex: 1 },
+  reminderLabel: { color: '#aabbdd', fontWeight: '600', fontSize: 15 },
+  reminderLabelActive: { color: '#2196f3' },
+  reminderDesc: { color: '#445566', fontSize: 13, marginTop: 2 },
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#2a3f55',
+    alignItems: 'center',
+    marginTop: 10,
+    justifyContent: 'center',
+  },
+  radioOuterActive: { borderColor: '#2196f3' },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#2196f3',
+  },
+
+  // Navigation
+  navRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 32,
+  },
+  backButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    backgroundColor: '#0d1f35',
+    borderWidth: 1,
+    borderColor: '#1a2f4a',
+  },
+  backButtonText: { color: '#6677aa', fontSize: 16, fontWeight: '600' },
+  nextButton: {
+    flex: 2,
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    backgroundColor: '#2196f3',
+    shadowColor: '#2196f3',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  nextButtonFull: { flex: 1 },
+  nextButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+});
+
+export default ProfileScreen;
