@@ -1,0 +1,192 @@
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { ActivityData } from '../../../shared/types/activity';
+import { ActivityData, ActivityLevel } from '../../../shared/types/activity';
+
+interface Props {
+  activity: ActivityData | null;
+}
+
+const levelColor: Record<ActivityLevel, string> = {
+  sedentary: '#556677',
+  light:     '#4caf50',
+  moderate:  '#2196f3',
+  vigorous:  '#ff9800',
+  extreme:   '#f44336',
+};
+
+const levelEmoji: Record<ActivityLevel, string> = {
+  sedentary: '🪑',
+  light:     '🚶',
+  moderate:  '🚴',
+  vigorous:  '🏃',
+  extreme:   '🔥',
+};
+
+const ActivityDisplay: React.FC<Props> = ({ activity }) => {
+  if (!activity) {
+    return (
+
+@@ -15,41 +31,141 @@ const ActivityDisplay: React.FC<Props> = ({ activity }) => {
+    );
+  }
+
+  const color = levelColor[activity.activityLevel];
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.sectionTitle}>Activity</Text>
+      <View style={styles.grid}>
+        <Stat emoji="❤️" label="Heart Rate" value={`${activity.heartRateBpm} BPM`} />
+        <Stat emoji="👟" label="Steps" value={activity.stepCount.toLocaleString()} />
+        <Stat emoji="🌡️" label="Body Temp" value={`${activity.bodyTemperatureCelsius.toFixed(1)}°C`} />
+        <Stat emoji="🔥" label="Calories" value={`${activity.caloriesBurned} kcal`} />
+      <View style={styles.header}>
+        <Text style={styles.sectionTitle}>ACTIVITY</Text>
+        <View style={[styles.levelBadge, { backgroundColor: color + '22', borderColor: color + '55' }]}>
+          <Text style={styles.levelEmoji}>{levelEmoji[activity.activityLevel]}</Text>
+          <Text style={[styles.levelText, { color }]}>
+            {activity.activityLevel.toUpperCase()}
+          </Text>
+        </View>
+      <View style={styles.levelBadge}>
+        <Text style={styles.levelText}>Activity Level: {activity.activityLevel.toUpperCase()}</Text>
+      </View>
+
+      <View style={styles.grid}>
+        <StatCard
+          emoji="❤️"
+          value={`${activity.heartRateBpm}`}
+          unit="BPM"
+          label="Heart Rate"
+          highlight={activity.heartRateBpm > 100}
+        />
+        <StatCard
+          emoji="👟"
+          value={activity.stepCount.toLocaleString()}
+          unit="steps"
+          label="Steps Today"
+        />
+        <StatCard
+          emoji="🌡️"
+          value={activity.bodyTemperatureCelsius.toFixed(1)}
+          unit="°C"
+          label="Body Temp"
+          highlight={activity.bodyTemperatureCelsius > 37.5}
+        />
+        <StatCard
+          emoji="🔥"
+          value={`${activity.caloriesBurned}`}
+          unit="kcal"
+          label="Calories"
+        />
+      </View>
+    </View>
+  );
+};
+
+const Stat = ({ emoji, label, value }: { emoji: string; label: string; value: string }) => (
+  <View style={styles.stat}>
+const StatCard: React.FC<{
+  emoji: string;
+  value: string;
+  unit: string;
+  label: string;
+  highlight?: boolean;
+}> = ({ emoji, value, unit, label, highlight }) => (
+  <View style={[styles.statCard, highlight && styles.statCardHighlight]}>
+    <Text style={styles.statEmoji}>{emoji}</Text>
+    <Text style={styles.statValue}>{value}</Text>
+    <View style={styles.statValueRow}>
+      <Text style={[styles.statValue, highlight && styles.statValueHighlight]}>{value}</Text>
+      <Text style={styles.statUnit}>{unit}</Text>
+    </View>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
+
+const styles = StyleSheet.create({
+  card: { backgroundColor: '#1a2a3a', borderRadius: 16, padding: 20 },
+  sectionTitle: { color: '#8899aa', fontSize: 12, fontWeight: '600', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 },
+  loading: { color: '#8899aa', textAlign: 'center' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  stat: { width: '45%', alignItems: 'center', backgroundColor: '#0a1628', borderRadius: 12, padding: 12 },
+  statEmoji: { fontSize: 24, marginBottom: 4 },
+  statValue: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  statLabel: { color: '#8899aa', fontSize: 11, marginTop: 2 },
+  levelBadge: { marginTop: 16, backgroundColor: '#2196f322', borderRadius: 8, padding: 10, alignItems: 'center' },
+  levelText: { color: '#2196f3', fontWeight: '700', fontSize: 13 },
+  card: {
+    backgroundColor: '#0d1f35',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#1a2f4a',
+    gap: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    color: '#445566',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  levelBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+  },
+  levelEmoji: { fontSize: 13 },
+  levelText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  loading: { color: '#445566', textAlign: 'center', padding: 20 },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  statCard: {
+    width: '47%',
+    backgroundColor: '#060f1e',
+    borderRadius: 14,
+    padding: 14,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#1a2f4a',
+  },
+  statCardHighlight: {
+    borderColor: '#ff980044',
+    backgroundColor: '#ff980011',
+  },
+  statEmoji: { fontSize: 20 },
+  statValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 3,
+  },
+  statValue: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  statValueHighlight: { color: '#ff9800' },
+  statUnit: {
+    color: '#445566',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  statLabel: {
+    color: '#445566',
+    fontSize: 11,
+    marginTop: 2,
+  },
+});
+
+export default ActivityDisplay;
