@@ -1,0 +1,181 @@
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { WeatherData, WeatherCondition } from '../../../shared/types/weather';
+
+interface Props {
+  weather: WeatherData | null;
+}
+
+const conditionEmoji: Record<WeatherCondition, string> = {
+  sunny: '☀️',
+  partly_cloudy: '⛅',
+  overcast: '☁️',
+  rainy: '🌧️',
+  stormy: '⛈️',
+  snowy: '❄️',
+  foggy: '🌫️',
+};
+
+const conditionLabel: Record<WeatherCondition, string> = {
+  sunny: 'Sunny',
+  partly_cloudy: 'Partly Cloudy',
+  overcast: 'Overcast',
+  rainy: 'Rainy',
+  stormy: 'Stormy',
+  snowy: 'Snowy',
+  foggy: 'Foggy',
+};
+
+const WeatherDisplay: React.FC<Props> = ({ weather }) => {
+  if (!weather) {
+    return (
+
+@@ -25,44 +35,125 @@ const WeatherDisplay: React.FC<Props> = ({ weather }) => {
+    );
+  }
+
+  // Hydration impact message
+  const getImpactMessage = () => {
+    if (weather.temperatureCelsius >= 32) return '🔥 Hot day — drinking more is critical';
+    if (weather.humidity >= 75) return '💦 High humidity increases sweat loss';
+    if (weather.uvIndex >= 8) return '☀️ High UV — stay extra hydrated';
+    if (weather.altitudeMeters >= 1500) return '⛰️ High altitude increases water loss';
+    return '✅ Conditions are comfortable today';
+  };
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.sectionTitle}>Current Conditions</Text>
+      <View style={styles.row}>
+      <Text style={styles.sectionTitle}>WEATHER</Text>
+
+      {/* Main weather row */}
+      <View style={styles.mainRow}>
+        <Text style={styles.emoji}>{conditionEmoji[weather.condition]}</Text>
+        <View>
+        <View style={styles.mainInfo}>
+          <Text style={styles.temp}>{Math.round(weather.temperatureCelsius)}°C</Text>
+          <Text style={styles.location}>{weather.locationName}</Text>
+          <Text style={styles.condition}>{conditionLabel[weather.condition]}</Text>
+          <Text style={styles.location}>📍 {weather.locationName}</Text>
+        </View>
+      </View>
+
+      {/* Detail chips */}
+      <View style={styles.chips}>
+        <Chip label="Humidity" value={`${weather.humidity}%`} />
+        <Chip label="Altitude" value={`${weather.altitudeMeters}m`} />
+        <Chip label="UV Index" value={`${weather.uvIndex}`} />
+      </View>
+      <View style={styles.details}>
+        <Detail label="Humidity" value={`${weather.humidity}%`} />
+        <Detail label="Altitude" value={`${weather.altitudeMeters}m`} />
+        <Detail label="UV Index" value={`${weather.uvIndex}`} />
+
+      {/* Hydration impact */}
+      <View style={styles.impactBox}>
+        <Text style={styles.impactText}>{getImpactMessage()}</Text>
+      </View>
+    </View>
+  );
+};
+
+const Detail = ({ label, value }: { label: string; value: string }) => (
+  <View style={styles.detail}>
+    <Text style={styles.detailLabel}>{label}</Text>
+    <Text style={styles.detailValue}>{value}</Text>
+const Chip = ({ label, value }: { label: string; value: string }) => (
+  <View style={styles.chip}>
+    <Text style={styles.chipValue}>{value}</Text>
+    <Text style={styles.chipLabel}>{label}</Text>
+  </View>
+);
+
+const styles = StyleSheet.create({
+  card: { backgroundColor: '#1a2a3a', borderRadius: 16, padding: 20 },
+  sectionTitle: { color: '#8899aa', fontSize: 12, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  loading: { color: '#8899aa', textAlign: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 16 },
+  emoji: { fontSize: 48 },
+  temp: { fontSize: 36, fontWeight: '300', color: '#fff' },
+  location: { color: '#8899aa', fontSize: 14 },
+  details: { flexDirection: 'row', justifyContent: 'space-between' },
+  detail: { alignItems: 'center' },
+  detailLabel: { color: '#8899aa', fontSize: 11, textTransform: 'uppercase' },
+  detailValue: { color: '#fff', fontSize: 16, fontWeight: '600', marginTop: 2 },
+  card: {
+    backgroundColor: '#0d1f35',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#1a2f4a',
+    gap: 16,
+  },
+  sectionTitle: {
+    color: '#445566',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  loading: { color: '#445566', textAlign: 'center', padding: 20 },
+  mainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  emoji: { fontSize: 52 },
+  mainInfo: { gap: 2 },
+  temp: {
+    fontSize: 40,
+    fontWeight: '200',
+    color: '#ffffff',
+    letterSpacing: -1,
+  },
+  condition: {
+    fontSize: 15,
+    color: '#aabbcc',
+    fontWeight: '500',
+  },
+  location: {
+    fontSize: 13,
+    color: '#556677',
+    marginTop: 2,
+  },
+  chips: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  chip: {
+    flex: 1,
+    backgroundColor: '#060f1e',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+  chipValue: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  chipLabel: {
+    color: '#445566',
+    fontSize: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  impactBox: {
+    backgroundColor: '#060f1e',
+    borderRadius: 10,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#2196f3',
+  },
+  impactText: {
+    color: '#7788aa',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+});
+
+export default WeatherDisplay;
